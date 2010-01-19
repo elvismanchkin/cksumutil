@@ -59,7 +59,7 @@ def check_crc(fentrylist):
             fe['result'] = 'CRC Error: found %s computed %s' % (fe['crc_found'], fe['crc_computed'])
             failed.append(fe)
 
-        print '%s\t%s\t%s' % (fe['filename'], fe['crc_computed'], fe['result'])
+        print '%s\t%s\t%s' % (fe['result'], fe['filename'], fe['crc_computed'])
 
     print '='*80
     print 'Summary:'
@@ -68,7 +68,7 @@ def check_crc(fentrylist):
     if len(failed) > 0:
         print 'CRC Failed on:'
         for fe in failed:
-            print fe
+            print '%s result: %s computed: %s' % (fe['filename'], fe['result'], fe['crc_computed'])
 
 def main():
     print 'Scanning ', path
