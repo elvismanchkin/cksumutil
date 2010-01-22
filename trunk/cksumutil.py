@@ -3,14 +3,23 @@ import sys
 import os
 import re
 import zlib, binascii, struct
+import optparse
 
-if len(sys.argv) != 2:
-    print 'Usage: ./crc_check.py path'
-    sys.exit()
-else:
-    path = sys.argv[1]
+def check_dir(option, opt_str, value, parser):
+    path = value
+    print 'Scanning ', path
+    filenames = get_file_list(path)
+    crcs = extract_crc(filenames)
+    check_crc(path, crcs)
+    return
 
-def get_file_list():
+def check_md5file(option, opt_str, value, parser):
+    return
+
+def check_sfvfile(option, opt_str, value, parser):
+    return
+
+def get_file_list(path):
     fl = sorted(os.listdir(path))
     filelist = []
     for d in fl:
@@ -42,17 +51,17 @@ def extract_crc(filenamelist):
     return crclist
 
 
-def compute_crc(fentry):
+def compute_crc(path, fentry):
     fn = fentry['filename']
     fo = file(os.path.join(path, fn), 'rb')
     bin = struct.pack('!l', zlib.crc32(fo.read()))
     computed_crc = binascii.hexlify(bin).upper()
     fentry['crc_computed'] = computed_crc
 
-def check_crc(fentrylist):
+def check_crc(path, fentrylist):
     failed = []
     for fe in fentrylist:
-        compute_crc(fe)
+        compute_crc(path, fe)
         if fe['crc_found'] == fe['crc_computed']:
             fe['result'] = 'OK'
         else:
@@ -71,10 +80,24 @@ def check_crc(fentrylist):
             print '%s result: %s computed: %s' % (fe['filename'], fe['result'], fe['crc_computed'])
 
 def main():
-    print 'Scanning ', path
-    filenames = get_file_list()
-    crcs = extract_crc(filenames)
-    check_crc(crcs)
+    parser = optparse.OptionParser()
+    parser.add_option('-d', '--dir',
+                      action="callback", callback=check_dir,
+                      type="string",
+                      help="""directory with filenames of the form: foo[crc32].ext\
+                           The file's crc32 checksum will be computed and\
+                           compared against the one in their filename.
+                           """)
+    parser.add_option('-m', '--md5',
+                      action="callback", callback=check_md5file,
+                      type="string",
+                      help=".md5 file to check")
+    parser.add_option('-s', '--sfv',
+                      action="callback", callback=check_sfvfile,
+                      type="string",
+                      help=".sfv file to check")
+    parser.parse_args()
+    return
 
 
 main()
