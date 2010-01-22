@@ -1,13 +1,13 @@
 #labels Featured,Phase-Implementation
-
-= To Do now =
+= To Do =
+== now ==
   # implement getopt argument processing
   # support checking md5 files
   # support checking sfv files
 
-= To Do later =
+== later ==
   # ability to generate md5 and sfv files
 
-= To Do much later =
+== much later ==
   # pyqt interface
   # cherrypy and closure library web interface
