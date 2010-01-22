@@ -1,7 +1,7 @@
 #labels Featured,Phase-Implementation
 = To Do =
 == now ==
-  # implement optparse argument processing
+  # ~~implement optparse argument processing~~
   # support checking md5 files
   # support checking sfv files
 
