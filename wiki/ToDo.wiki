@@ -2,8 +2,9 @@
 = To Do =
 == now ==
   # ~~implement optparse argument processing~~
-  # support checking md5 files
+  # ~~support checking md5 files~~
   # support checking sfv files
+  # refactor code - especially check_* and print
 
 == later ==
   # ability to generate md5 and sfv files
