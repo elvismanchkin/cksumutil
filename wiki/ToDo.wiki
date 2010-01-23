@@ -3,7 +3,7 @@
 == now ==
   # ~~implement optparse argument processing~~
   # ~~support checking md5 files~~
-  # support checking sfv files
+  # ~~support checking sfv files~~
   # refactor code - especially check`_*` and print
 
 == later ==
