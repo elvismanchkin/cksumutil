@@ -23,6 +23,12 @@ def check_md5file(option, opt_str, value, parser):
     return
 
 def check_sfvfile(option, opt_str, value, parser):
+    sfvfn = value
+    print 'Processing ', value
+    print
+    sfvs = extract_sfv(sfvfn)
+    path = os.path.split(value)[0]
+    check_crc(path, sfvs)
     return
 
 def get_file_list(path):
@@ -34,6 +40,22 @@ def get_file_list(path):
             filelist.append(d)
 
     return filelist
+
+def extract_sfv(sfvfn):
+    sfvlist = []
+    sfvfo = open(sfvfn)
+    line = sfvfo.readline()
+    while line:
+        sfventry = {}
+        sfvln = line.split(' ')
+        sfventry['filename'] = sfvln[0]
+        sfventry['crc_found'] = sfvln[1].strip().upper()
+        sfvlist.append(sfventry)
+
+        line = sfvfo.readline()
+
+    sfvfo.close()
+    return sfvlist
 
 def extract_md5(md5fn):
     md5list = []
