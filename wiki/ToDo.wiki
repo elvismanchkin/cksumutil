@@ -5,9 +5,11 @@
   # ~~support checking md5 files~~
   # ~~support checking sfv files~~
   # refactor code - especially check`_*` and print
+  # print usage on incorrect invocation (e.g., with no args)
 
 == later ==
   # ability to generate md5 and sfv files
+  # ability to rename files with their crc32 included in the filename
 
 == much later ==
   # pyqt interface
