@@ -4,31 +4,33 @@ import zlib, binascii, struct
 import hashlib
 import optparse
 
+FILENAME = 'filename'
+CHECKSUM_FOUND = 'checksum_found'
+CHECKSUM_COMPUTED = 'checksum_computed'
+RESULT = 'result'
+ERROR_MSG = 'error_msg'
+MD5 = 'md5'
+CRC = 'crc32'
+
 def check_dir(option, opt_str, value, parser):
     path = value
-    print 'Scanning ', path
-    print
     filenames = get_file_list(path)
     crcs = extract_crc(filenames)
-    check_crc(path, crcs)
+    check_files(CRC, path, crcs)
     return
 
 def check_md5file(option, opt_str, value, parser):
     md5fn = value
-    print 'Processing ', value
-    print
     md5s = extract_md5(md5fn)
     path = os.path.split(value)[0]
-    check_md5(path, md5s)
+    check_files(MD5, path, md5s)
     return
 
 def check_sfvfile(option, opt_str, value, parser):
     sfvfn = value
-    print 'Processing ', value
-    print
     sfvs = extract_sfv(sfvfn)
     path = os.path.split(value)[0]
-    check_crc(path, sfvs)
+    check_files(CRC, path, sfvs)
     return
 
 def get_file_list(path):
@@ -46,11 +48,12 @@ def extract_sfv(sfvfn):
     sfvfo = open(sfvfn)
     line = sfvfo.readline()
     while line:
-        sfventry = {}
-        sfvln = line.split(' ')
-        sfventry['filename'] = sfvln[0]
-        sfventry['crc_found'] = sfvln[1].strip().upper()
-        sfvlist.append(sfventry)
+        if line[0] != ';': # sfv comment
+            sfventry = {}
+            sfvln = line.split(' ')
+            sfventry[FILENAME] = sfvln[0]
+            sfventry[CHECKSUM_FOUND] = sfvln[1].strip().upper()
+            sfvlist.append(sfventry)
 
         line = sfvfo.readline()
 
@@ -74,8 +77,8 @@ def extract_md5(md5fn):
         # else if the file is a binary file: one '*' character
         # the filename
         filename = line[md5endi+2:]
-        md5entry['md5_found'] = md5sum
-        md5entry['filename'] = filename.strip()
+        md5entry[CHECKSUM_FOUND] = md5sum
+        md5entry[FILENAME] = filename.strip()
         md5list.append(md5entry)
 
         line = md5fo.readline()
@@ -89,80 +92,76 @@ def extract_crc(filenamelist):
     crclist = []
     for filename in filenamelist:
         fentry = {}
-        fentry['filename'] = filename
+        fentry[FILENAME] = filename
         fn = filename.upper()
         crcmatches = re.findall('\[([A-F0-9]{8})\]', fn)
         if len(crcmatches) == 1:
-            fentry['crc_found'] = crcmatches[0]
+            fentry[CHECKSUM_FOUND] = crcmatches[0]
         elif len(crcmatches) > 1:
-            fentry['crc_found'] = 'error: more than 1 crc found in filename: ', crcmatches
+            fentry[ERROR_MSG] = 'More than 1 CRC found in filename.'
         else:
-            # len(crcmatches) == 0:
-            fentry['crc_found'] = 'error: no crc found in filename'
+            fentry[ERROR_MSG] = 'No CRC found in filename.'
 
         crclist.append(fentry)
     return crclist
 
 def compute_md5(path, fentry):
-    fn = fentry['filename']
+    fn = fentry[FILENAME]
     try:
         fo = file(os.path.join(path, fn), 'rb')
-        fentry['md5_computed'] = hashlib.md5(fo.read()).hexdigest().upper()
+        fentry[CHECKSUM_COMPUTED] = hashlib.md5(fo.read()).hexdigest().upper()
     except IOError as (errno, strerror):
-        fentry['md5_computed'] = 'IO Error %d: %s' % (errno, strerror)
-
-    return
-
-def check_md5(path, md5list):
-    failed = []
-    for fe in md5list:
-        compute_md5(path, fe)
-        if fe['md5_found'] == fe['md5_computed']:
-            fe['result'] = 'OK'
-        else:
-            fe['result'] = 'MD5 Error: found %s computed %s' % (fe['md5_found'], fe['md5_computed'])
-            failed.append(fe)
-
-        print '%s\t%s' % (fe['result'], fe['filename'])
-
-    print '='*80
-    print 'Summary:'
-    print '%d files' % len(md5list)
-    print '%d errors' % len(failed)
-    if len(failed) > 0:
-        print 'MD5 Failed on:'
-        for fe in failed:
-            print '%s result: %s' % (fe['filename'], fe['result'])
-
+        fentry[ERROR_MSG] = 'IO Error %d: %s' % (errno, strerror)
     return
 
 def compute_crc(path, fentry):
-    fn = fentry['filename']
-    fo = file(os.path.join(path, fn), 'rb')
-    bin = struct.pack('!l', zlib.crc32(fo.read()))
-    computed_crc = binascii.hexlify(bin).upper()
-    fentry['crc_computed'] = computed_crc
+    fn = fentry[FILENAME]
+    try:
+        fo = file(os.path.join(path, fn), 'rb')
+        bin = struct.pack('!l', zlib.crc32(fo.read()))
+        computed_crc = binascii.hexlify(bin).upper()
+        fentry[CHECKSUM_COMPUTED] = computed_crc
+    except IOError as (errno, strerror):
+        fentry[ERROR_MSG] = 'IO Error %d: %s' % (errno, strerror)
+    return
 
-def check_crc(path, fentrylist):
+def check_files(type, path, filelist):
     failed = []
-    for fe in fentrylist:
-        compute_crc(path, fe)
-        if fe['crc_found'] == fe['crc_computed']:
-            fe['result'] = 'OK'
-        else:
-            fe['result'] = 'CRC Error: found %s computed %s' % (fe['crc_found'], fe['crc_computed'])
+    for fe in filelist:
+        # check if there was a file error
+        if fe.has_key(ERROR_MSG):
+            fe[RESULT] = 'Error'
             failed.append(fe)
+        else:
+            # no error, go compute checksum
+            if type == MD5:
+                compute_md5(path, fe)
+            elif type == CRC:
+                compute_crc(path, fe)
 
-        print '%s\t%s' % (fe['result'], fe['filename'])
+            if fe[CHECKSUM_FOUND] == fe[CHECKSUM_COMPUTED]:
+                fe[RESULT] = 'OK'
+            else:
+                fe[RESULT] = 'Error'
+                fe[ERROR_MSG] = 'Found %s but computed %s.'\
+                    % (fe[CHECKSUM_FOUND], fe[CHECKSUM_COMPUTED])
+                failed.append(fe)
 
+        print '%s\t%s' % (fe[RESULT], fe[FILENAME])
+
+    print_summary(filelist, failed)
+    return    
+
+def print_summary(filelist, failedlist):
     print '='*80
     print 'Summary:'
-    print '%d files' % len(fentrylist)
-    print '%d errors' % len(failed)
-    if len(failed) > 0:
-        print 'CRC Failed on:'
-        for fe in failed:
-            print '%s result: %s' % (fe['filename'], fe['result'])
+    print '%d files' % len(filelist)
+    print '%d errors' % len(failedlist)
+    if len(failedlist) > 0:
+        print
+        print 'Checksum failed on:'
+        for fe in failedlist:
+                print '%s\t%s' % (fe[FILENAME], fe[ERROR_MSG])
 
 def main():
     parser = optparse.OptionParser()
@@ -181,10 +180,12 @@ def main():
                       action="callback", callback=check_sfvfile,
                       type="string",
                       help=".sfv file to check")
-    parser.parse_args()
+    if len(sys.argv) == 1:
+        parser.print_help()
+
+    print
+    (options, args) = parser.parse_args()
     return
 
-
-main()
-
-
+if __name__ == '__main__':
+    main()
