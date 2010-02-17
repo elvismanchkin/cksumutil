@@ -12,6 +12,28 @@ ERROR_MSG = 'error_msg'
 MD5 = 'md5'
 CRC = 'crc32'
 
+def create_sfvfile(option, opt_str, value, parser):
+    sfvfn = value
+    filelist = []
+    for fn in parser.rargs: # globbing is already done!
+        fentry = {}
+        fentry[FILENAME] = fn
+        compute_crc('./', fentry)
+        filelist.append(fentry)
+
+    try:
+        fo = open(sfvfn, 'w')
+        for fe in filelist:
+            fo.write('%s %s\r\n' %( fe[FILENAME], fe[CHECKSUM_COMPUTED]))
+        fo.flush()
+        fo.close()
+        
+    except IOError as (errno, strerror):
+        print 'IO Error %d: %s' % (errno, strerror)
+        return
+
+    return
+
 def check_dir(option, opt_str, value, parser):
     path = value
     filenames = get_file_list(path)
@@ -180,6 +202,15 @@ def main():
                       action="callback", callback=check_sfvfile,
                       type="string",
                       help=".sfv file to check")
+    parser.add_option('--create-sfv',
+                      action="callback", callback=create_sfvfile,
+                      type="string",
+                      help="""The first argument is the desired sfv file name.\
+                           The second argument is a Unix path expression\
+                           e.g., file*.txt OR a list of files.\
+                           Subdirectories will not be traversed.
+                           """)
+
     if len(sys.argv) == 1:
         parser.print_help()
 
