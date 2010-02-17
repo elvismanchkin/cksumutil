@@ -4,8 +4,8 @@
   # ~~implement optparse argument processing~~
   # ~~support checking md5 files~~
   # ~~support checking sfv files~~
-  # refactor code - especially check`_*` and print
-    # make strings global const
+  # ~~refactor code - especially check`_*` and print~~
+    # ~~make strings global const~~
   # ~~print usage on incorrect invocation (e.g., with no args)~~
 
 == later ==
