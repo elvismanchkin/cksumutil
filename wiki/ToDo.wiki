@@ -7,9 +7,8 @@
   # ~~refactor code - especially check`_*` and print~~
     # ~~make strings global const~~
   # ~~print usage on incorrect invocation (e.g., with no args)~~
-
-== later ==
   # ability to generate md5 and sfv files
+    # test sfv file creation: globs and file list
   # ability to rename files with their crc32 included in the filename
 
 == much later ==
