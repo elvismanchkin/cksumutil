@@ -14,17 +14,41 @@ CRC = 'crc32'
 
 def create_sfvfile(option, opt_str, value, parser):
     sfvfn = value
-    filelist = []
-    for fn in parser.rargs: # globbing is already done!
-        fentry = {}
-        fentry[FILENAME] = fn
-        compute_crc('./', fentry)
-        filelist.append(fentry)
+    filelist = create_checksum_file(CRC, parser.rargs, sfvfn)
+    print_create_summary(filelist, sfvfn)
+    return
 
+def create_md5file(option, opt_str, value, parser):
+    md5fn = value
+    filelist = create_checksum_file(MD5, parser.rargs, md5fn)
+    print_create_summary(filelist, md5fn)
+    return
+
+def create_checksum_file(type, filelist, checksumfn):
+    addedfiles = []
     try:
-        fo = open(sfvfn, 'w')
-        for fe in filelist:
-            fo.write('%s %s\r\n' %( fe[FILENAME], fe[CHECKSUM_COMPUTED]))
+        fo = open(checksumfn, 'w')
+
+        for fn in filelist:
+            fentry = {}
+            fentry[FILENAME] = fn
+            if type == MD5:
+                compute_md5('./', fentry)
+                # default to binary format for all files
+                fo.write('%s *%s\r\n'\
+                         % (fentry[CHECKSUM_COMPUTED], fentry[FILENAME]))
+            elif type == CRC:
+                compute_crc('./', fentry)
+                fo.write('%s %s\r\n'\
+                             % (fentry[FILENAME], fentry[CHECKSUM_COMPUTED]))
+            else:
+                print 'Error: Unrecognized type of checksum %s.' % type
+
+
+            addedfiles.append(fentry)
+            print 'Added %s %s'\
+                % (fentry[FILENAME], fentry[CHECKSUM_COMPUTED])
+
         fo.flush()
         fo.close()
         
@@ -32,6 +56,12 @@ def create_sfvfile(option, opt_str, value, parser):
         print 'IO Error %d: %s' % (errno, strerror)
         return
 
+    return addedfiles
+
+def print_create_summary(filelist, fn):
+    print '='*80
+    print 'Summary:'
+    print 'Added %d files to %s' % (len(filelist), fn)
     return
 
 def check_dir(option, opt_str, value, parser):
@@ -155,11 +185,14 @@ def check_files(type, path, filelist):
             fe[RESULT] = 'Error'
             failed.append(fe)
         else:
-            # no error, go compute checksum
+            # no error, compute checksum
             if type == MD5:
                 compute_md5(path, fe)
             elif type == CRC:
                 compute_crc(path, fe)
+            else:
+                print 'Error: Unrecognized type of checksum %s.' % type
+                return
 
             if fe[CHECKSUM_FOUND] == fe[CHECKSUM_COMPUTED]:
                 fe[RESULT] = 'OK'
@@ -171,10 +204,10 @@ def check_files(type, path, filelist):
 
         print '%s\t%s' % (fe[RESULT], fe[FILENAME])
 
-    print_summary(filelist, failed)
+    print_check_summary(filelist, failed)
     return    
 
-def print_summary(filelist, failedlist):
+def print_check_summary(filelist, failedlist):
     print '='*80
     print 'Summary:'
     print '%d files' % len(filelist)
@@ -206,6 +239,14 @@ def main():
                       action="callback", callback=create_sfvfile,
                       type="string",
                       help="""The first argument is the desired sfv file name.\
+                           The second argument is a Unix path expression\
+                           e.g., file*.txt OR a list of files.\
+                           Subdirectories will not be traversed.
+                           """)
+    parser.add_option('--create-md5',
+                      action="callback", callback=create_md5file,
+                      type="string",
+                      help="""The first argument is the desired md5 file name.\
                            The second argument is a Unix path expression\
                            e.g., file*.txt OR a list of files.\
                            Subdirectories will not be traversed.
